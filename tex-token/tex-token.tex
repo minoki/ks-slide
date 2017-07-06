@@ -1,0 +1,450 @@
+\documentclass{beamer}
+\usepackage{luatexja}
+\usepackage{luatexja-ruby}
+\usepackage{verbatim}
+\usepackage[T1]{fontenc}
+\usepackage{alltt}
+\usepackage{xcolor}
+\hypersetup{unicode}
+\usepackage{fancyvrb}
+\DefineVerbatimEnvironment{MyCode}{Verbatim}{numbers=left,numbersep=5pt,frame=leftline,showspaces,fontshape=up}
+\DefineVerbatimEnvironment{MyCodeAllTT}{Verbatim}{numbers=left,numbersep=5pt,frame=leftline,fontshape=up,commandchars=\\\{\}}
+\title{\TeX の字句解析}
+\author{荒田 実樹}
+\date{2016年6月9日}
+\begin{document}
+\begin{frame}\frametitle{}
+  \titlepage
+\end{frame}
+
+\begin{frame}\frametitle{目次}
+  \tableofcontents
+\end{frame}
+
+\section{\TeX の処理の概要}
+\begin{frame}[fragile]\frametitle{\TeX の処理の概要}
+  \TeX の処理は大きく4段階に分けられる。
+  \begin{enumerate}
+  \item 字句解析%(input processor)
+    \begin{itemize}
+    \item 入力ファイルから「トークン」を切り出す
+    \item コメントを読み飛ばしたりもする
+    \end{itemize}
+  \item 展開%(expansion processor)
+    \begin{itemize}
+    \item マクロの展開
+    \item 条件分岐
+    \item なかなか奥が深い
+    \end{itemize}
+  \item 実行%(execution processor)
+    \begin{itemize}
+    \item 新しくマクロを定義する \\
+      (plain \TeX なら \verb|\def|, \LaTeX なら \verb|\newcommand|)
+    \item 字句解析器に介入できる（！）
+    \item ほか、色々
+    \end{itemize}
+  \item 組版%(visual processor)
+  \end{enumerate}
+\end{frame}
+
+\section{字句解析とは}
+
+%\newcommand\ignoredspace{{\color{blue}\fboxsep=0.1pt\fboxrule=0.02pt\fbox{\vphantom{(\{M;}\phantom{ }}}}
+\newcommand\ignoredspace{{\color{blue}\fboxsep=0.1pt\fboxrule=0.3pt\fbox{\vphantom{(\{M;}\color{black}\textvisiblespace}}}
+
+\begin{frame}[fragile]\frametitle{字句解析とは？}
+  普通のプログラミング言語のソースコードは、「トークン」と呼ばれる最小単位に分割できる。
+\begin{overprint}\onslide<1>
+\newcommand\tok[1]{{\fboxsep=0.7pt\fboxrule=0pt\fbox{\vphantom{(\{Mg;}#1}}}
+\begin{quote}
+\begin{MyCodeAllTT}
+\tok{if} \tok{(}\tok{Math}\tok{.}\tok{PI} \tok{>} \tok{3.14}\tok{)} \tok{\{}
+    \tok{console}\tok{.}\tok{log}\tok{(}\tok{"Hello world!"}\tok{)}\tok{;}
+    // This is a comment
+\tok{\}}
+\end{MyCodeAllTT}
+\end{quote}
+\onslide<2>
+  \newcommand\ctok[2]{{\color{#1}\fboxrule=0.7pt\fboxsep=0pt\fbox{\vphantom{(\{Mg;}\color{black}#2}}}
+  \newcommand\kwd{\ctok{blue}}
+  \newcommand\numlit{\ctok{red}}
+  \newcommand\strlit{\ctok{brown}}
+  \newcommand\punct{\ctok{lightgray}}
+  \newcommand\ident{\ctok{gray}}
+\begin{quote}
+\begin{MyCodeAllTT}
+\kwd{if} \punct{(}\ident{Math}\punct{.}\ident{PI} \punct{>} \numlit{3.14}\punct{)} \punct{\{}
+    \ident{console}\punct{.}\ident{log}\punct{(}\strlit{"Hello world!"}\punct{)}\punct{;}
+    // This is a comment
+\punct{\}}
+\end{MyCodeAllTT}
+\end{quote}
+トークンの種類： \\
+\kwd{キーワード}、\punct{記号}、\ident{識別子}、\numlit{数値リテラル}、\strlit{文字列リテラル}、etc.
+
+空白やコメントは読み飛ばされる。
+\end{overprint}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{\TeX の場合は？}
+  \TeX におけるトークンの種類：
+  \begin{itemize}
+  \item 普通の文字（例：\texttt{a}, \texttt{b}, \texttt{c}, \texttt{0}, \texttt{1}, \texttt{2}, \texttt{@}, \texttt{+}, \texttt{|}）
+  \item 空白文字
+  \item 特殊文字 \verb|$ # ^ _ { } & ~ % \|
+  \item コントロールシークエンス（例： \verb|\foo|）
+    \begin{itemize}
+    \item \TeX のコマンドの名前に使える
+    \item 通常は、バックスラッシュ \texttt{\textbackslash} の後にアルファベットをいくつか続けたもの
+    \item バックスラッシュの後に記号一文字というパターンもある（例：\verb|\!|, \verb|\\|）
+    \end{itemize}
+  \end{itemize}
+  %\item 予約語とか、文字列リテラルとか、そういうのはない
+  コメント（\verb|%| から始まる）および\alert{一部の空白}は、字句解析時に読み飛ばされる。
+\end{frame}
+
+\section{空白の扱い}
+
+\begin{frame}\frametitle{空白の扱い}
+  \TeX では、場所によって空白が無視されたり無視されなかったりする。
+  例えば、以下の状況では空白が無視される。
+  \begin{itemize}
+  \item コントロールシークエンスの直後 \\
+    （例：\texttt{\textbackslash foo\ignoredspace\{bar\}\textvisiblespace\{piyo\}}）
+  \item 行頭
+  \item 空白文字の直後
+  \item コマンドの引数の直前
+    （例：\texttt{\textbackslash foo\textvisiblespace\{bar\}\ignoredspace\{piyo\}}）
+  \item 数式モード中の空白文字
+    （例：\texttt{\$\ignoredspace a+b\ignoredspace\$}）
+  \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{空白の扱い}
+  どの段階で無視される？
+  \begin{enumerate}
+  \item 字句解析で無視される空白（このスライドで解説）
+    \begin{itemize}
+    \item コントロールシークエンスの直後
+      （例：\texttt{\textbackslash foo\ignoredspace\{bar\}\textvisiblespace\{piyo\}}）
+    \item 行頭
+    \item 空白文字の直後
+    \end{itemize}
+  \item 展開時に無視される空白
+    \begin{itemize}
+    \item コマンドの引数の直前など
+      （例：\texttt{\textbackslash foo\textvisiblespace\{bar\}\ignoredspace\{piyo\}}）
+    \end{itemize}
+  \item 実行時に無視される空白
+    \begin{itemize}
+    \item 数式モード中の空白文字など
+      （例：\texttt{\$\ignoredspace a+b\ignoredspace\$}）
+    \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{空白の扱い --- 無視される状況 その1}
+  コントロールシークエンスの直後の空白%（改行が空白文字とみなされる場合も含む）
+は無視される。
+
+  \begin{itemize}
+  \item \verb|\TeX!!!| と書いても \texttt{\textbackslash TeX\ignoredspace!!!} と書いても同じ。
+  \item ただし、記号一文字の場合は直後の空白は無視されない。
+    \begin{itemize}
+    \item \verb*|keisan\%sugaku| → \fbox{keisan\%sugaku}
+    \item \texttt{keisan\textbackslash\%\textvisiblespace sugaku} → \fbox{keisan\% sugaku}
+    \end{itemize}
+  \item 空白文字一文字の場合は直後の空白は無視される。
+    \begin{itemize}
+    \item \verb*|\renewcommand{\ }{*}| した状況で、
+    \item \verb*|keisan\ sugaku| → \fbox{{\renewcommand{\ }{*}keisan\ sugaku}}
+    \item \texttt{keisan\textbackslash\textvisiblespace\ignoredspace sugaku} → \fbox{{\renewcommand{\ }{*}keisan\  sugaku}}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{空白の扱い --- 無視される状況 その2}
+  行頭の空白は無視される。
+
+  \begin{block}{例}
+以下の2つは等価。
+    \begin{quote}
+\begin{MyCode}
+Happy
+\TeX{} Life!
+\end{MyCode}
+\end{quote}
+    \begin{quote}
+\begin{MyCodeAllTT}[showspaces]
+Happy
+\ignoredspace\ignoredspace\textbackslash{}TeX\{\} Life!
+\end{MyCodeAllTT}
+\end{quote}
+  \end{block}
+  ちなみに、この例では \verb|\TeX| の後の空白を無視させないために \verb|{}| を挟んでいる。
+\end{frame}
+
+\defverbatim\codeA{
+\begin{verbatim*}
+a
+b
+\end{verbatim*}
+}
+
+\section{改行の扱い}
+\begin{frame}[fragile]\frametitle{改行の扱い}
+改行は1個の半角空白として取り扱われる。
+\begin{block}{例}
+  以下の2つは等価。
+  \begin{quote}
+\begin{MyCode}
+a
+b
+\end{MyCode}
+\end{quote}
+\begin{quote}
+\begin{MyCode}
+a b
+\end{MyCode}
+\end{quote}
+\end{block}
+  \begin{itemize}
+\item 半角空白を入れずにソースコード上で改行したい場合は、
+  \begin{quote}
+\begin{MyCode}
+a%
+b
+\end{MyCode}
+\end{quote}
+という風に、コメントを使うと良い。（\texttt{ab} と等価）
+\item 「コントロールシークエンスの直後の空白は無視される」ので、コントロールシークエンスの直後の\alert{改行}も無視される。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{改行の扱い --- p\TeX の場合}
+p\TeX では、和文の直後の改行は無視される。
+  \begin{itemize}
+  \item さっきのルールによれば、以下の2つは\alert{\TeX 的には}同じはず。
+    \begin{quote}
+\begin{MyCode}
+わぁい
+うすしお
+\end{MyCode}
+\end{quote}
+    \begin{quote}
+\begin{MyCode}
+わぁい うすしお
+\end{MyCode}
+\end{quote}
+  \item しかし、\alert{p\TeX では}違う：前者は空白が入らない。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{改行の扱い --- 改段落}
+空行は、``\texttt{\textbackslash par}'' というコントロールシークエンスとして扱われる。
+\begin{block}{例}以下の2つは等価。
+\begin{quote}
+\begin{MyCode}
+「イヤーッ！」
+
+「グワーッ！」
+\end{MyCode}
+\end{quote}
+  \begin{quote}
+\begin{MyCode}
+「イヤーッ！」
+\par
+「グワーッ！」
+\end{MyCode}
+\end{quote}
+\end{block}
+\begin{itemize}
+\item \texttt{\textbackslash par} は通常は改段落コマンドを表す。
+\item 空行が2つあったら \texttt{\textbackslash par} 2つになる。
+  （改段落コマンドは2つ以上あっても効果は同じ）
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{改行の扱い --- 改段落}
+空白のみからなる行も空行として扱われる（``\texttt{\textbackslash par}'' になる）。
+\begin{block}{例}以下の2つは等価。つまり、どちらも改段落される。
+\begin{quote}
+\begin{MyCode}
+「イヤーッ！」
+
+「グワーッ！」
+\end{MyCode}
+\end{quote}
+  \begin{quote}
+\begin{MyCodeAllTT}
+「イヤーッ！」
+\textvisiblespace\textvisiblespace\textvisiblespace
+「グワーッ！」
+\end{MyCodeAllTT}
+\end{quote}
+しかし、次のように、コメントのみからなる行は改段落にならない。
+  \begin{quote}
+\begin{MyCode}
+「イヤーッ！」
+%
+「グワーッ！」
+\end{MyCode}
+\end{quote}
+\end{block}
+\end{frame}
+
+\section{字句解析への介入}
+\begin{frame}\frametitle{字句解析への介入}
+  \TeX では、実行中のプログラムが自身の字句解析に介入できる！
+
+  \begin{itemize}
+  \item \TeX のプログラムの実行結果によって、特殊文字の扱いを変更できる。
+  \item あるいは、新たに特殊文字を作ったりできる。
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{字句解析への介入 --- 例}
+  \LaTeX のコマンドにも、字句解析に介入するものがある。
+  \begin{itemize}
+  \item 特殊文字を無効化するコマンド・環境
+    %（``\verb|\verb+\hello world+|'' と書いても、``\verb|\hello|'' はコントロールシークエンスとして扱われない）
+    \begin{itemize}
+    \item \verb|\verb| コマンド
+    \item \texttt{verbatim} 環境
+    \item \texttt{comment} 環境
+    \item \texttt{alltt} 環境：\verb|\|, \verb|{|, \verb|}|以外の特殊文字を無効化する
+      % →コマンドを記述できる
+    \end{itemize}
+  \item \verb|\makeatletter|, \verb|\makeatother| コマンド
+    \begin{itemize}
+    \item コマンド名に ``\texttt{@}'' を使えるようにする。
+      %（例：\verb|\@ifnextchar|）
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile]\frametitle{字句解析への介入 --- 制限}
+  すでに字句解析が終わった部分へは介入できない。
+
+\newcommand\ctok[2]{{\color{#1}\fboxrule=0.3pt\fboxsep=0pt\fbox{\vphantom{(\{Mg;}\color{black}#2}}}
+\newcommand\tokControlSequence[1]{\ctok{red}{\texttt{#1}}}
+\newcommand\tokCS[1]{\ctok{red}{\texttt{\string#1}}}
+\newcommand\tokOther[1]{\ctok{brown}{\texttt{#1}}}
+\newcommand\tokLetter[1]{\ctok{gray}{\texttt{#1}}}
+\newcommand\tokSp[1]{\ctok{yellow}{\texttt{#1}}}
+\newcommand\tokSpace{\ctok{blue}{\textvisiblespace}}
+
+\begin{block}{例}
+\begin{quote}
+%\newcommand{\foo}[1]{#1}
+%\foo{\verb+\hello world+}
+\begin{overprint}\onslide<1>
+\renewcommand\ctok[2]{{\fboxrule=0.0pt\fboxsep=0.3pt\fbox{\vphantom{(\{Mg;}#2}}}
+\begin{MyCodeAllTT}
+\tokCS\newcommand\tokSp\{\tokCS\foo\tokSp\}\tokOther[\tokOther1\tokOther]\tokSp\{\tokSp#\tokOther1\tokSp\}
+\tokCS\verb\tokOther+\tokOther\textbackslash\tokLetter{h}\tokLetter{e}\tokLetter{l}\tokLetter{l}\tokLetter{o}\tokOther{\textvisiblespace}\tokLetter{w}\tokLetter{o}\tokLetter{r}\tokLetter{l}\tokLetter{d}\tokOther+
+\tokCS\foo\tokSp\{\tokCS\verb\tokOther+\tokCS\hello\textvisiblespace\tokLetter{w}\tokLetter{o}\tokLetter{r}\tokLetter{l}\tokLetter{d}\tokOther+\tokSp\}
+\end{MyCodeAllTT}
+\onslide<2>
+\begin{MyCodeAllTT}
+\tokCS\newcommand\tokSp\{\tokCS\foo\tokSp\}\tokOther[\tokOther1\tokOther]\tokSp\{\tokSp#\tokOther1\tokSp\}
+\tokCS\verb\tokOther+\tokOther\textbackslash\tokLetter{h}\tokLetter{e}\tokLetter{l}\tokLetter{l}\tokLetter{o}\tokOther{\textvisiblespace}\tokLetter{w}\tokLetter{o}\tokLetter{r}\tokLetter{l}\tokLetter{d}\tokOther+
+\tokCS\foo\tokSp\{\tokCS\verb\tokOther+\tokCS\hello\textvisiblespace\tokLetter{w}\tokLetter{o}\tokLetter{r}\tokLetter{l}\tokLetter{d}\tokOther+\tokSp\}
+\end{MyCodeAllTT}
+\end{overprint}
+\end{quote}
+\end{block}
+
+\begin{itemize}
+\item 2番目の \verb+\verb+ は期待通りに動作するか？
+  \onslide<2> $\rightarrow$ No!
+%\item \verb|\verb| が実行されるのは ``\verb|{\verb+\hello world+}|'' の字句解析が終わった後。
+\item 2番目の \verb|\verb| が実行される時点で、後ろの部分が %
+\tokOther{+}
+\tokControlSequence{\textbackslash hello}
+\tokLetter{w} \tokLetter{o} \tokLetter{r} \tokLetter{l} \tokLetter{d}
+\tokOther{+}
+という風に字句解析済み。
+\item 特殊文字を無効化できずに、エラーになる。
+\item \texttt{\textbackslash verb} 等の\alert{「字句解析に介入する」コマンドは、マクロの引数の中では使えない}（重要）
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{カテゴリーコード}
+  \TeX では、字句解析時に読み取った文字に対して「カテゴリーコード」と呼ばれる整数を割り当てる。 \\
+  この「カテゴリーコード」によって、その文字がどう扱われるかが決まる。
+  \begin{enumerate}
+    \setcounter{enumi}{-1} % 0から始める
+  \item Escape character: \verb|\|
+  \item Beginning of group: \verb|{|
+  \item End of group: \verb|}|
+  \item Math shift: \verb|$|
+  \item Alignment tab: \verb|&|
+  \item End of line
+  \item Parameter character: \verb|#|
+  \item Superscript: \verb|^|
+  \item Subscript: \verb|_|
+    %\item Ignored
+    \item[] （続く）
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{カテゴリーコード}
+  \begin{enumerate}
+  \item[] （続き）
+    \setcounter{enumi}{9}
+  \item Space
+  \item Letter: アルファベット。
+    \begin{itemize}
+    \item コントロールシークエンスを読む際に、アルファベットとして扱われる。
+    \end{itemize}
+  \item Other: 記号や数字。
+  \item Active: 半角チルダ（\verb|~|）.
+    \begin{itemize}
+    \item バックスラッシュなしで、単独でコマンド名として使える文字の事。
+      \verb|\newcommand{~}{...}| みたいなことができる。
+    \item これに対し、半角チルダ以外の記号、例えば @ では \verb|\newcommand{@}{...}| とはできない。
+    \end{itemize}
+  \item Comment character: \verb|%|
+  %\item Invalid character
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{字句解析への介入 --- 悪用例}
+  カテゴリーコードを変更すると、例えば、普通の文字・記号をコマンド名として使える。
+
+\begin{block}{例}
+文章中の句読点「、。」を、カンマとピリオド「，．」に変える
+\begin{quote}
+\begin{MyCode}
+\catcode`、=13 \def、{，}%
+\catcode`。=13 \def。{．}%
+最近、学校が好きだ。%→「最近，学校が好きだ．」になる
+\end{MyCode}
+\end{quote}
+%この例だと、素直に日本語入力の設定を変えるか、エディターで置換するべき
+\end{block}
+
+%「自分が何をやっているかわかっていて」「思わぬ副作用にも対処できる」上級者向け
+「自分が何をやっているかわかっていて」「何が起こっても責任を取れる」上級者向け。
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{説明しなかったこと＆参考文献}
+  \begin{block}{字句解析について説明しなかったこと}
+    \begin{itemize}
+    \item カテゴリーコード 9 (ignored) とカテゴリーコード 15 (invalid character)
+    \item Superscript 2つ（\verb|^^|）による制御文字の挿入（例：\verb|^^M|）
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{参考文献}
+    \begin{thebibliography}{9}
+    \item Donald Knuth, \emph{The \TeX book}, Addison-Wesley, 1984. \\
+      特に Chapter 7: How \TeX{} Reads What You Type が字句解析について扱っている。
+    \item Victor Eijkhout, \emph{\TeX{} by Topic}, Addison-Wesley, 1991. \\
+      \href{http://eijkhout.net/texbytopic/texbytopic.html}{著者のWebサイト}からPDFを無料でダウンロード可能。
+    \end{thebibliography}
+  \end{block}
+\end{frame}
+
+\end{document}
