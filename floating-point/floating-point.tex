@@ -1,0 +1,702 @@
+% -*- TeX-engine: luatex -*-
+\documentclass[aspectratio=169]{beamer}
+\usepackage{luatexja}
+\usepackage{luatexja-ruby}
+\usepackage[hiragino-pro,deluxe]{luatexja-preset}
+\usepackage{verbatim}
+\usepackage[T1]{fontenc}
+\usepackage{alltt}
+\usepackage{xcolor}
+\hypersetup{unicode}
+\usepackage{fancyvrb}
+\usepackage{amsmath}
+\usepackage{ulem}
+\usepackage{listings}
+\usepackage{tikz}
+
+\usetheme{CambridgeUS}
+\renewcommand{\kanjifamilydefault}{\gtdefault}
+\setbeamerfont{title}{family=\gtfamily} % ゴシック
+\setbeamerfont{author}{family=\gtfamily} % ゴシック
+\setbeamerfont{frame}{family=\gtfamily} % ゴシック
+\setbeamerfont{frametitle}{family=\mgfamily} % 丸ゴシック
+\setbeamertemplate{blocks}[rounded]
+
+\title{浮動小数点数}
+\author{荒田 実樹}
+\date{2017年6月22日}
+
+\newcommand{\hexa}[1]{[\texttt{#1}]_{16}}
+\newcommand{\binary}[1]{[\texttt{#1}]_{2}}
+\newcommand{\abs}[1]{\lvert #1\rvert}
+\newcommand{\roundsto}{\stackrel{\text{丸め}}{\leadsto}}
+
+\lstset{basicstyle=\ttfamily,columns=flexible,language=C}
+
+\begin{document}
+\begin{frame}\frametitle{}
+  \titlepage
+\end{frame}
+\begin{frame}\frametitle{目次}
+  \tableofcontents
+\end{frame}
+\section{コンピューター上での数の表現}
+\begin{frame}\frametitle{数の表現：（固定長）整数}
+  \begin{block}{16ビット符号なし整数}
+    \begin{itemize}
+    \item $3=\hexa{0003}=\binary{0000 0000 0000 0011}$
+    \item $2017=\hexa{07E1}=\binary{0000 0111 1110 0001}$
+    \item 表せる最大の整数：$2^{16}-1=65535=\hexa{FFFF}=\binary{1111 1111 1111 1111}$
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{16ビット符号あり整数（2の補数表現）}
+    \begin{itemize}
+    \item $-1=\hexa{FFFF}=\binary{1111 1111 1111 1111}$
+    \item $-2=\hexa{FFFE}=\binary{1111 1111 1111 1110}$
+    \item 表せる最小の整数：$-2^{15}=\hexa{8000}=\binary{1000 0000 0000 0000}$
+    \item 表せる最大の整数：$2^{15}-1=\hexa{7FFF}=\binary{0111 1111 1111 1111}$
+    \end{itemize}
+  \end{block}
+
+  32ビットや64ビットの整数が使われることが多い
+\end{frame}
+
+\begin{frame}\frametitle{数の表現：固定小数点数}
+  小数点の位置を決め、小数点以下 $N$ 桁を表せるようにする。
+
+  \begin{exampleblock}{例：小数点以下（2進で）8桁}
+    \begin{itemize}
+    \item $0.5=128\times 2^{-8}=\hexa{00.80}=\binary{0000 0000.1000 0000}$
+    \item $1.25=320\times 2^{-8}=\hexa{01.40}=\binary{0000 0001.0100 0000}$
+    \item $0.1=25.6\times 2^{-8}\roundsto 26\times 2^{-8}=\hexa{00.1A}=\binary{0000 0000.0001 1010}$
+    \end{itemize}
+  \end{exampleblock}
+
+  \begin{block}{固定小数点数の演算}
+    \begin{itemize}
+    \item 足し算、引き算は整数と同じように計算できる
+    \item かけ算は、整数の掛け算とビットシフトを組み合わせる
+    \item 整数演算を流用できる
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}\frametitle{数の表現：浮動小数点数}
+  精度 $p$ と底 $b$ （2か10のことが多い）を決め、数を
+  \[[X_0.X_1X_2\dots X_{p-1}]_b\times b^e \quad (X_0\ne 0)\]
+  の形で表し、仮数部 \(X_i\) と指数部 \(e\) をそれぞれ保存する。
+
+  \begin{exampleblock}{例：2進小数の場合}
+    \[[1.X_1X_2X_3\dots X_{p-1}]_2\times 2^e\]
+    \begin{itemize}
+    \item 先頭の桁は必ず1にできる
+    \end{itemize}
+    % ので、表現するときは省略できる。
+  \end{exampleblock}
+
+  \begin{block}{浮動小数点数の演算}
+    \begin{itemize}
+    \item 整数や固定小数点数よりも複雑
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}\frametitle{固定小数点数 vs 浮動小数点数}
+  \begin{center}
+    \begin{tabular}{c|c|c}
+      & 固定小数点数 & 浮動小数点数 \\ \hline
+      メリット & 実装が簡単 & 表せる数の範囲が広い \\ \hline
+      デメリット & 表せる数の範囲が狭い & 実装が複雑
+    \end{tabular}
+  \end{center}
+
+  \begin{itemize}
+  \item コンピューター上で普通に計算する際は、浮動小数点数が使われる場合が多い
+  \item 固定小数点数を採用している言語としては、\TeX などがある
+    \begin{itemize}
+    \item \TeX が作られたのは1970年代で、IEEE754が登場したのは1985年
+    \end{itemize}
+  \item 貧弱なCPUだと浮動小数点数がハードウェア的に実装されていないケースもある
+  \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{余談：それ以外の数の表し方}
+  \begin{itemize}
+  \item これまで紹介したのは、使用するビット数が決まっている表し方
+    \begin{itemize}
+    \item 普通の用途ではこれで十分
+    \end{itemize}
+  \item 速度やメモリを犠牲にしてでも、数を「もっと広い範囲で」「もっと正確に」表したい用途では
+    \begin{itemize}
+    \item 多倍長整数：メモリの許す限り何桁でも
+    \item 有理数：（多倍長）整数の比で表す
+    \item 任意精度計算：精度100桁でも1000桁でも（無限精度ではない）
+    \end{itemize}
+    などを使う
+  \end{itemize}
+  \begin{exampleblock}{コストを払ってでも高精度計算が必要な状況の例}
+    \href{https://blogs.msdn.microsoft.com/oldnewthing/20040525-00/?p=39193/}{「OS標準の電卓アプリで10進小数の計算が正しくできない！」みたいなクレームの対策}
+  \end{exampleblock}
+\end{frame}
+
+\section{IEEE754による浮動小数点数の表現}
+\begin{frame}\frametitle{\ruby{IEEE}{アイトリプルイー}754}
+% 規格の意義
+  \begin{itemize}
+  \item 浮動小数点数の規格
+    \begin{itemize}
+    \item 初版は IEEE754-1985、最新版は IEEE754-2008
+    \item うちの学内ネットワークからはタダで見れるみたい
+    \end{itemize}
+  \item 同じ規格に従っていれば、言語やマシンが違っても同じ計算結果になる
+    \begin{itemize}
+    \item 例：パソコン vs スマートフォン
+    \end{itemize}
+  \item データ交換の形式（どういう数にどういうビット列を対応させるか）を定める
+  \item 2進小数 (binary) と10進小数 (decimal) が定義されているが、この小話では以後2進小数 (binary) を扱う
+  \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754 binary}
+  全体のビット数によって、何種類か定められている
+  \begin{tabular}{|c|c|c|c|c|} \hline
+    & binary16 & binary32 & binary64 & binary128 \\ \hline
+    全体のビット数 & 16 & 32 & 64 & 128 \\ \hline
+    仮数部の精度 \(p\) & 11 & 24 & 53 & 113 \\ \hline
+    指数部の範囲 & \([-14,15]\) & \([-126,127]\) & \([-1022,1023]\) & \([-16382,16383]\) \\ \hline \hline
+    指数部のバイアス & 15 & 127 & 1023 & 16383 \\ \hline
+    指数部のビット数 & 5 & 8 & 11 & 15 \\ \hline
+    仮数部のビット数 & 10 & 23 & 52 & 112 \\ \hline
+  \end{tabular}
+
+  \begin{block}{どれを使う？}
+    \begin{itemize}
+    \item よく使われるのは binary64（倍精度）と binary32（単精度）
+    \item 最近は、画像処理や機械学習等の用途で16ビット浮動小数点数（半精度）の需要があるらしい（質より量？）
+    \item binary128 （四倍精度）は \sout{誰も使ってない} 一般的とは言い難い
+    \item \sout{x87には80ビットの…}{\tiny いや何でもない}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類}
+IEEE754における浮動小数点数は、以下の5つのどれかに該当する：
+\begin{itemize}
+\item 正規化数 (normal)
+\item ゼロ (zero)
+\item 非正規化数 (subnormal)
+\item 無限大 (infinity)
+\item 非数 (NaN; Not a Number)
+\end{itemize}
+
+binary64の場合にそれぞれ見ていく
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：正規化数 (normal)}
+  \begin{block}{正規化数とは}
+    $[1.X_1X_2\dots X_{52}]_2\times 2^e$ (\(-1022\le e\le 1023\)) の形で表せる数
+  \end{block}
+
+  \begin{exampleblock}{例}
+    \(1.25\times 2^{1023}=\hexa{1.4}\times 2^{1023}=\binary{1.01}\times 2^{1023}\)
+    \begin{itemize}
+    \item 符号：正 (0)
+    \item 指数部のビット列：\(1023+1023=2046=\hexa{7fe}=\binary{111 1111 1110}\)
+      \begin{itemize}
+      \item 指数部をビット列として表す際には、バイアス（この場合1023）を加える。
+      \end{itemize}
+    \item 仮数部のビット列：\(\hexa{4000 0000 0000 0}=\binary{0100 \(\underbrace{00\dotsc00}_{48 bits}\)}\)
+    \end{itemize}
+    まとめると
+    \[
+      1.25\times 2^{1023}=\operatorname{binary64}(
+      [\mathtt{
+        \underbrace{0}_{符号}
+        \underbrace{111 1111 1110}_{\text{指数部}}
+        \underbrace{0010 0000 \dotsc 0000}_{\text{仮数部 (52ビット)}}
+      }]_2
+      )
+    \]
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：正規化数 (normal)}
+  \begin{block}{正規化数で表せる範囲}
+    最小の正の正規化数：
+    \begin{gather*}
+      1\times 2^{-1022}=[1.\underbrace{000\dots 000}_{52 bits}]_2\times 2^{-1022} \\
+      =\operatorname{binary64}(
+      [\mathtt{
+        \underbrace{0}_{符号}
+        \underbrace{000 0000 0001}_{\text{指数部}}
+        \underbrace{0000 0000 \dotsc 0000}_{\text{仮数部 (52ビット)}}
+      }]_2
+      )
+    \end{gather*}
+    最大の正の正規化数：
+    \begin{gather*}
+      (2-2^{-52})\times 2^{1023}=
+      [1.\underbrace{111\dots 111}_{52 bits}]_2\times 2^{1023} \\
+      =\operatorname{binary64}(
+      [\mathtt{
+        \underbrace{0}_{符号}
+        \underbrace{111 1111 1110}_{\text{指数部}}
+        \underbrace{1111 1111 \dotsc 1111}_{\text{仮数部 (52ビット)}}
+      }]_2
+      )
+    \end{gather*}
+  \end{block}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：正規化数 (normal)}
+  数直線に図示してみる：
+  \begin{center}
+    \begin{tikzpicture}
+      \draw (-0.5,0) -- (1.45,0);
+      \draw[dotted] (1.45,0) -- (1.75,0);
+      \draw (1.75,0) -- (3,0);
+      \draw[thick] (0,-0.2) -- +(0,0.4) node [above] {\(0\)};
+      \draw[thick] (1,-0.2) -- +(0,0.4) node [above] {\(2^{-1022}\)};
+      \draw (1.2,-0.1) -- +(0,0.2);
+      \draw (1.4,-0.1) -- +(0,0.2);
+      \draw[->] (1.05,-1) node [below] {幅 \(2^{-1074}\)} -- (1.1,-0.05);
+      \draw[->] (1.15,-1) -- (1.9,-0.05);
+
+      \draw (1.8,-0.1) -- +(0,0.2);
+      \draw[thick] (2,-0.2) -- +(0,0.4) node [above right] {\(2^{-1021}\)};
+      \draw (2.4,-0.1) -- +(0,0.2);
+      \draw (2.8,-0.1) -- +(0,0.2);
+      \draw[->] (2.8,-1) node [below] {幅 \(2^{-1073}\)} -- (2.2,-0.05);
+
+      \draw[dotted] (3,0) -- (5.2,0);
+      \draw (5.2,0) -- (7,0);
+      \draw[dotted] (7,0) -- (7.5,0);
+      \draw (7.5,0) -- (9,0);
+
+      \draw (5.4,-0.1) -- +(0,0.2);
+      \draw (5.6,-0.1) -- +(0,0.2);
+      \draw (5.8,-0.1) -- +(0,0.2);
+      \draw[->] (5,-1) node [below] {幅 \(2^{-53}\)} -- (5.7,-0.05);
+      \draw[thick] (6,-0.2) -- +(0,0.4) node [above] {\(1\)};
+      \draw[->] (7,-1) node [below] {幅 \(2^{-52}\)} -- (6.2,-0.05);
+      \draw[->] (7.2,-1) -- (7.9,-0.05);
+      \draw (6.4,-0.1) -- +(0,0.2);
+      \draw (6.8,-0.1) -- +(0,0.2);
+
+      \draw (7.6,-0.1) -- +(0,0.2);
+      \draw (7.8,-0.1) -- +(0,0.2);
+      \draw[thick] (8,-0.2) -- +(0,0.4) node [above] {\(2\)};
+      \draw (8.4,-0.1) -- +(0,0.2);
+      \draw (8.8,-0.1) -- +(0,0.2);
+      \draw[->] (8.5,-1) node [below] {幅 \(2^{-51}\)} -- (8.2,-0.05);
+
+      \draw[dotted] (9,0) -- (10,0);
+      \draw[->] (10,0) -- (13,0);
+      \draw (10.5,-0.1) -- +(0,0.2);
+      \draw (11,-0.1) -- +(0,0.2);
+      \draw (11.5,-0.1) -- +(0,0.2);
+      \draw[thick] (12,-0.2) -- +(0,0.4);
+      \draw[->] (11,1) node [above] {最大値} -- (11.9,0.3);
+      \draw[dotted,thick] (12.5,-0.4) -- +(0,0.8) node [above] {\(2^{1024}\)};
+      \draw[->] (12,-1) node [below] {幅 \(2^{971}\)} -- (12.25,-0.05);
+      \draw[->] (11.8,-1) -- (11.25,-0.05);
+    \end{tikzpicture}
+  \end{center}
+  \begin{itemize}
+  \item 絶対値が小さいほど刻み幅が小さい
+  \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：ゼロ (zero)}
+  \begin{block}{浮動小数点数におけるゼロとは}
+    計算結果がゼロだった、または絶対値が（非）正規化数で表現できないほど小さかったことを表す
+  \end{block}
+
+  ゼロは正規化数では表せないので、専用のビット列を使って表す：
+  \begin{align*}
+    +0&=\operatorname{binary64}(
+        [\mathtt{
+        \underbrace{0}_{符号}
+        \underbrace{000 0000 0000}_{\text{指数部}}
+        \underbrace{0000 0000 \dotsc 0000}_{\text{仮数部 (52ビット)}}
+        }]_2
+        ), \\
+    -0&=\operatorname{binary64}(
+        [\mathtt{
+        \underbrace{1}_{符号}
+        \underbrace{000 0000 0000}_{\text{指数部}}
+        \underbrace{0000 0000 \dotsc 0000}_{\text{仮数部 (52ビット)}}
+        }]_2
+        )
+  \end{align*}
+  \begin{block}{注意}
+    \begin{itemize}
+    \item ゼロにも符号がある！
+    \item \(+0\) と \(-0\) は比較演算では同一視される
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：非正規化数 (subnormal)}
+  \begin{block}{非正規化数とは}
+    「指数部のビット列が0で、なおかつ仮数部のビット列が0でない」ものを使って、0より大きく\(1\times 2^{-1022}\)未満の数をコードしたもの
+    \[[0.X_1X_2\dots X_{52}]_2\times 2^{-1022}\]
+  \end{block}
+
+  % 正規化数の場合は先頭の \(1.\) は省略した（「暗黙の1」）が、非正規化数はそうしない。精度は53ビットより少なくなる。
+
+  \begin{exampleblock}{例}
+    \begin{gather*}
+      1.25\times 2^{-1024}=\hexa{1.4}\times 2^{-1024}=\binary{1.01}\times 2^{-1024}=\binary{0.0101}\times 2^{-1022} \\
+      =\operatorname{binary64}(
+      [\mathtt{
+        \underbrace{0}_{符号}
+        \underbrace{000 0000 0000}_{\text{指数部}}
+        \underbrace{0101 0000 \dotsc 0000}_{\text{仮数部 (52ビット)}}
+      }]_2
+      )
+    \end{gather*}
+    \begin{itemize}
+      % \item 符号：正 (0)
+      % \item 指数部のビット列：\(0=\hexa{000}=\binary{000 0000 0000}\)
+    \item 仮数部のビット列：\(\hexa{5000 0000 0000 0}=\binary{0101 \(\underbrace{00\dotsc00}_{48 bits}\)}\)
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：非正規化数 (subnormal)}
+  \begin{block}{非正規化数で表せる範囲}
+    最小の正の非正規化数：
+    \begin{gather*}
+      1\times 2^{-1074}=1\times 2^{-1022-52}=[0.00\dots 0001]_2\times 2^{-1022} \\
+      =\operatorname{binary64}(
+      [\mathtt{
+        \underbrace{0}_{符号}
+        \underbrace{000 0000 0000}_{\text{指数部}}
+        \underbrace{0000 \dotsc 0001}_{\text{仮数部 (52ビット)}}
+      }]_2
+      )
+    \end{gather*}
+    最大の正の非正規化数：
+    \begin{gather*}
+      (1-2^{52})\times 2^{-1022}=[0.111\dots 111]_2\times 2^{-1022} \\
+      =\operatorname{binary64}(
+      [\mathtt{
+        \underbrace{0}_{符号}
+        \underbrace{000 0000 0000}_{\text{指数部}}
+        \underbrace{1111 \dotsc 1111}_{\text{仮数部 (52ビット)}}
+      }]_2
+      )
+    \end{gather*}
+  \end{block}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：非正規化数 (subnormal)}
+  数直線に図示してみる：
+  \begin{center}
+    \begin{tikzpicture}
+      \draw (-0.5,0) -- (2,0);
+      \draw[dotted] (2,0) -- (3.5,0);
+      \draw (3.5,0) -- (6,0);
+      \draw[dotted] (6,0) -- (8,0);
+      \draw (8,0) -- (11.5,0);
+      \draw[dotted,->] (11.5,0) -- (12,0);
+      \draw[thick] (0,-0.2) -- +(0,0.4) node [above] {\(0\)};
+      \draw[thick,red] (0.5,-0.2) -- +(0,0.4) (0.8,0.2) node [above] {\(2^{-1074}\)};
+      \draw[red] (1,-0.1) -- +(0,0.2);
+      \draw[red] (1.5,-0.1) -- +(0,0.2);
+      \draw[->] (2,-1.5) -- (0.25,-0.05);
+      \draw[->] (2.15,-1.5) node [below] {幅 \(2^{-1074}\) (subnormal)} -- (1.25,-0.05);
+      \draw[->] (2.3,-1.5) -- (4.25,-0.05);
+
+      \draw[red] (4,-0.1) -- +(0,0.2);
+      \draw[thick] (4.5,-0.2) -- +(0,0.4) node [above] {\(2^{-1022}\)};
+      \draw (5,-0.1) -- +(0,0.2);
+      \draw (5.5,-0.1) -- +(0,0.2);
+
+      \draw[->] (6,-1.5) -- (4.75,-0.05);
+      \draw[->] (6.15,-1.5) node [below] {幅 \(2^{-1074}\) (normal)} -- (5.25,-0.05);
+      \draw[->] (6.3,-1.5) -- (8.75,-0.05);
+
+      \draw (8.5,-0.1) -- +(0,0.2);
+      \draw[thick] (9,-0.2) -- +(0,0.4) node [above] {\(2^{-1021}\)};
+      \draw (10,-0.1) -- +(0,0.2);
+      \draw (11,-0.1) -- +(0,0.2);
+
+      \draw[->] (10,-1.5) -- (9.5,-0.05);
+      \draw[->] (10.2,-1.5) node [below] {幅 \(2^{-1073}\)} -- (10.5,-0.05);
+    \end{tikzpicture}
+  \end{center}
+  \begin{itemize}
+  \item 刻み幅は一定（固定小数点数っぽい）
+  \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：無限大 (infinity)}
+  \begin{block}{浮動小数点数における無限大とは}
+    計算結果の絶対値が正規化数で表現できないほど大きかった（\(2^{1024}\) 以上）、あるいは、\(1/0\) や \(\log 0\) を計算しようとしたことを表す
+  \end{block}
+
+  binary64における無限大は
+  \begin{align*}
+    +\infty&=\operatorname{binary64}(
+             [\mathtt{
+             \underbrace{0}_{符号}
+             \underbrace{111 1111 1111}_{\text{指数部}}
+             \underbrace{0000 0000 \dotsc 0000}_{\text{仮数部 (52ビット)}}
+             }]_2
+             ), \\
+    -\infty&=\operatorname{binary64}(
+             [\mathtt{
+             \underbrace{1}_{符号}
+             \underbrace{111 1111 1111}_{\text{指数部}}
+             \underbrace{0000 0000 \dotsc 0000}_{\text{仮数部 (52ビット)}}
+             }]_2
+             )
+  \end{align*}
+  の2つ
+
+  \(+0\) と \(-0\) の逆数は、それぞれの符号の無限大になる
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：非数 (NaN; Not a Number)}
+  \begin{block}{NaNとは}
+    計算結果が実数としてill-definedだったことを表す（例：\(0/0\), \(\sqrt{-1}\), \(\infty-\infty\)）
+  \end{block}
+
+  \begin{block}{性質}
+    \begin{itemize}
+    \item NaNが絡む演算の結果はNaNとなる
+      \begin{itemize}
+      \item 例：\(NaN\times 0=NaN\)
+      \end{itemize}
+    \item 比較演算では「自身と同一でない」と判断される
+      \begin{itemize}
+      \item これを利用して計算結果が NaN かどうかを判断できる
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+
+  \begin{exampleblock}{ビットパターンの例}
+    \[\operatorname{binary64}(
+    [\mathtt{
+      \underbrace{0}_{符号}
+      \underbrace{111 1111 1111}_{\text{指数部}}
+      \underbrace{1000 0000 \dotsc 0000}_{\text{仮数部 (52ビット)}}
+    }]_2
+    )\]
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類：非数 (NaN; Not a Number)}
+  \begin{block}{余談：NaNの応用}
+    \[[\mathtt{
+        \underbrace{0}_{符号}
+        \underbrace{111 1111 1111}_{\text{指数部}}
+        \underbrace{\overbrace{1}^{\text{NaNの種類}}** **** \dotsc ****}_{\text{仮数部 (52ビット)}}
+      }]_2
+    \]
+    \begin{itemize}
+    \item 仮数部におよそ51ビット分の情報を持てる
+      \begin{itemize}
+      \item 仮数部は52ビットあるが、先頭ビットはNaNの種類(quiet/signaling)を表すのに使われる
+      \item 仮数部が完全に0であってはいけない
+      \end{itemize}
+    \item NaN tagging / NaN trick （スクリプト言語処理系の実装に使われるテクニック）
+      \begin{itemize}
+      \item 一つの64ビット値に、スクリプト言語における値を保持できる（普通はデータの種類を表すのに数ビット、実際のデータを表すのに64ビット必要）
+      \item LuaJITが発祥（のはず；2009年ごろ）で、その後JavaScriptの処理系などでも採用されているらしい
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}\frametitle{IEEE754における数の種類}
+  \begin{block}{まとめ}
+    \begin{tabular}{c|r|l|l} \hline
+      指数部のビット列 & 仮数部 & 種類 & 値 \\ \hline
+      \(\binary{000 0000 0000}\) & \(0\) & ゼロ & \(\pm0\) \\ \hline
+      \(\binary{000 0000 0000}\) & \(\ne 0\) & 非正規化数 & \(\pm0.[\text{仮数部}]\times 2^{-1022}\) \\ \hline
+      \(\begin{gathered}
+        \binary{000 0000 0001},\dotsc \\
+        \dotsc,\binary{111 1111 1110}
+      \end{gathered}\) & & 正規化数 & \(\pm1.[\text{仮数部}]\times 2^{(\text{指数部のビット列})-1023}\) \\ \hline
+      \(\binary{111 1111 1111}\) & \(0\) & 無限大 & \(\pm\infty\) \\ \hline
+      \(\binary{111 1111 1111}\) & \(\ne 0\) & NaN & \\ \hline
+    \end{tabular}
+  \end{block}
+\end{frame}
+
+\section{浮動小数点数の演算の注意点}
+\begin{frame}\frametitle{演算と丸め方向}
+  計算結果を正確に表せない場合にどうするか？
+  % そういう場合でも何かしらの結果は欲しい（切り捨て、切り上げなどにより、表現可能な数に「丸める」など）
+
+  \begin{block}{例}
+    \(0.1\) は2進法だと循環小数になる：
+    \[0.1=\frac{1}{10}=\hexa{1.9999\(\cdots\)}\times 2^{-4}=\binary{1.1001 1001 1001\(\cdots\)}\times 2^{-4}\]
+  \end{block}
+
+  計算結果を正確に表せない場合は、近い値へ丸める：
+  \begin{itemize}
+  \item 最近接丸め：\hspace{2\zw}%
+    \(0.1\leadsto \binary{1.1001 \(\cdots\) 1001 1010}\times 2^{-4}\)
+  \item 負の無限大方向：
+    \(0.1\leadsto \binary{1.1001 \(\cdots\) 1001 1001}\times 2^{-4}\)
+  \item 正の無限大方向：
+    \(0.1\leadsto \binary{1.1001 \(\cdots\) 1001 1010}\times 2^{-4}\)
+  \item ゼロ方向：\hspace{3\zw}%
+    \(0.1\leadsto \binary{1.1001 \(\cdots\) 1001 1001}\times 2^{-4}\)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{丸め方向の利用：区間演算と精度保証}
+  \begin{itemize}
+  \item 丸めが発生すると、正確な計算はできない
+  \item それでも、丸め方向を上手く制御すると、計算結果の上界や下界を与えることはできる
+  \item 詳しくは「区間演算」や「精度保証」で調べて
+  \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{（2進）浮動小数点数の罠：10進小数との兼ね合い}
+  最近接丸めで \((0.1 + 0.1) + 0.1\) を計算してみよう
+
+  まず、 \(0.1 + 0.1\) は
+  \[
+    \begin{array}{crr}
+      & 0.1\roundsto & \binary{1.1001 1001 \(\cdots\) 1001 1010}\times 2^{-4} \\
+      +) & 0.1\roundsto & \binary{1.1001 1001 \(\cdots\) 1001 1010}\times 2^{-4} \\ \hline
+      & & \binary{11.0011 0011 \(\cdots\) 0011 0100}\times 2^{-4} \\
+      & & \roundsto\binary{11.0011 0011 \(\cdots\) 0011 010 }\times 2^{-4} \\
+    \end{array}
+  \]
+  なので、 \((0.1+0.1)+0.1\) は
+  \[
+    \begin{array}{crr}
+      & & \binary{11.0011 0011 \(\cdots\) 0011 010 }\times 2^{-4} \\
+      +) & 0.1\roundsto & \binary{1.1001 1001 \(\cdots\) 1001 1010}\times 2^{-4} \\ \hline
+      & & \binary{100.1100 1100 \(\cdots\) 1100 1110}\times 2^{-4} \\
+      & & \roundsto\binary{1.0011 0011 \(\cdots\) 0011 0100}\times 2^{-2}
+    \end{array}
+  \]
+  となる
+\end{frame}
+\begin{frame}\frametitle{（2進）浮動小数点数の罠：10進小数との兼ね合い}
+  一方、
+  \begin{gather*}
+    0.3=3/10=\hexa{1.3333\(\cdots\)}\times 2^{-2}=\binary{1.0011 0011 0011\(\cdots\)}\times 2^{-2} \\
+    \roundsto\binary{1.0011 0011 \(\cdots\) 0011 0011}\times 2^{-2}
+  \end{gather*}
+  なので、binary64では \((0.1 + 0.1) + 0.1\ne 0.3\) となる
+
+  \begin{block}{解決策}
+    10進小数を正確に扱いたいなら2進の浮動小数点数ではなくて10進の（浮動）小数点数を使え
+  \end{block}
+\end{frame}
+
+\begin{frame}\frametitle{浮動小数点数の罠：演算の結合法則}
+  \(1+2^{-53}+2^{-53}\) を（binary64 における最近接丸めで）計算してみよう
+  \begin{align*}
+    \intertext{\((1+2^{-53})+2^{-53}\) の場合：}
+    \alert<1-2>{(1+2^{-53})}+2^{-53}&\visible<2->{\roundsto \alert<2>{1}+2^{-53}\visible<3->{\roundsto \alert<3->{1}}} \\
+    \intertext{\(1+(2^{-53}+2^{-53})\) の場合：}
+    1+\alert<1-2>{(2^{-53}+2^{-53})}&\visible<2->{= \alert<3->{1+\alert<2>{2^{-52}}} \visible<3->{\quad \text{(これはbinary64で正確に表せる)}}}
+  \end{align*}
+  \pause[3]
+  なので、 \((1+2^{-53})+2^{-53}\ne 1+(2^{-53}+2^{-53})\) となる（結合法則が成り立たない！）
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{浮動小数点数の罠：指数部のオーバーフロー・アンダーフロー}
+  \(\operatorname{hypot}(x,y)=\sqrt{x^2+y^2}\) 関数を次のように素朴に実装したとする：
+
+  \begin{lstlisting}
+double naive_hypot(double x, double y) {
+    return sqrt(x * x + y * y);
+}
+\end{lstlisting}
+
+  （注：\texttt{hypot} は直角三角形の斜辺 (hypotenuse) の略）
+
+  \begin{block}{問題点：指数部のオーバーフロー・アンダーフロー}
+    \(x=3\times 2^{1000}\), \(y=4\times 2^{1000}\) に対して
+    \(\operatorname{hypot}(x,y)=5\times 2^{1000}\) となるべきだが…？
+
+    \pause
+    \(x^2=9\times 2^{\alert<3>{2000}}\visible<3->{\roundsto\alert{+\infty}}\),
+    \(y^2=16\times 2^{\alert<3>{2000}}\visible<3->{\roundsto\alert{+\infty}}\)
+    \pause
+    なので、
+    \[\mathtt{naive\_hypot}(x,y)=\mathtt{sqrt}((\alert{+\infty})+(\alert{+\infty}))=+\infty\]
+    となる（不適切！）
+  \end{block}
+\end{frame}
+\begin{frame}\frametitle{浮動小数点数の罠：指数部のオーバーフロー・アンダーフロー}
+  %\begin{block}{問題点：指数部のオーバーフロー・アンダーフロー}
+  %\end{block}
+  \begin{block}{解決策}
+    \begin{itemize}
+    \item 計算前に \(x\), \(y\) の指数部を適切な範囲に収める \\
+      （この場合なら $m=1002$ として \(2^m\cdot\sqrt{(x\cdot 2^{-m})^2+(y\cdot 2^{-m})^2}\) と計算させる）
+    \item または、割り算を使って
+      \[
+        \begin{cases}
+          \abs{y}\cdot\sqrt{1+(x/y)^2} & (\abs{x}\le\abs{y}) \\
+          \abs{x}\cdot\sqrt{1+(y/x)^2} & (\abs{y}\le\abs{x})
+        \end{cases}
+      \]
+      と計算する
+    \end{itemize}
+  \end{block}
+  複素数の除算（逆数）にも似たような罠がある
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{浮動小数点数の罠：情報落ち・桁落ち}
+  \(\sinh x=\frac{\exp(x)-\exp(-x)}{2}\) を次のように素朴に実装したとする：
+
+  \begin{lstlisting}
+double naive_sinh(double x) {
+    return (exp(x) - exp(-x)) / 2.0;
+}
+\end{lstlisting}
+
+  \begin{block}{問題点：0の近くでの挙動が不適切}
+    \(\abs{x}\ll 1\) の場合 \(\sinh x\approx x\) となるべきだが…？
+
+    \pause
+    \(x=2^{-100}\) の場合
+    \begin{align*}
+      \exp\bigl(2^{-100}\bigr)&=1+2^{-100}+\dotsb\visible<3->{\roundsto \alert{1}}, &
+                                                                                      \exp\bigl(-2^{-100}\bigr)&=1-2^{-100}+\dotsb\visible<3->{\roundsto \alert{1}}
+    \end{align*}
+    \pause
+    なので、\(\mathtt{naive\_sinh}\bigl(2^{-100}\bigr)=(\alert{1}-\alert{1})/2=0\) となる
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{浮動小数点数の罠：情報落ち・桁落ち}
+  \begin{block}{解決策}
+    \begin{itemize}
+    \item \(\operatorname{expm1}(x)=\exp(x)-1=x+x^2/2+\dotsb\)
+      を導入
+    \item \begin{lstlisting}
+double sinh(double x) {
+    return (expm1(x) - expm1(-x)) / 2.0;
+}
+\end{lstlisting}
+と定義すれば良い
+\item \(\frac{\operatorname{expm1}\bigl(2^{-100}\bigr)-\operatorname{expm1}\bigl(-2^{-100}\bigr)}{2.0}=\frac{2^{-100}-(-2^{-100})}{2.0}=2^{-100}\)
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\section{まとめ}
+\begin{frame}\frametitle{TL;DR}
+  \begin{itemize}
+  \item コンピューターで計算をさせるときは浮動小数点数の性質を知っておこう
+  \item 浮動小数点数の長所も短所も把握した上で、上手く付き合っていこう
+  \item 「0.1を10回足しても1.0にならない、これはバグだ」と大騒ぎするような大人にはなるな
+  \end{itemize}
+\end{frame}
+
+\end{document}
