@@ -199,6 +199,9 @@ pythontex-files-*/
 # Latexian
 TSWLatexianTemp*
 
+# luatexja-ruby
+*.ltjruby
+
 ## Editors:
 # WinEdt
 *.bak
