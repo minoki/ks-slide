@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+ <semantics>
+  <mrow>
+   <mi mathvariant="normal">Γ</mi>
+   <mrow>
+    <mo fence="true" stretchy="false">(</mo>
+    <mrow>
+     <mrow>
+      <mn>1</mn>
+      <mo stretchy="false">−</mo>
+      <mi>z</mi>
+     </mrow>
+    </mrow>
+    <mo fence="true" stretchy="false">)</mo>
+   </mrow>
+   <mi mathvariant="normal">Γ</mi>
+   <mrow>
+    <mrow>
+     <mo fence="true" stretchy="false">(</mo>
+     <mrow>
+      <mi>z</mi>
+     </mrow>
+     <mo fence="true" stretchy="false">)</mo>
+    </mrow>
+    <mo stretchy="false">=</mo>
+    <mfrac>
+     <mi mathvariant="normal">π</mi>
+     <mrow>
+      <mi>sin</mi>
+      <mrow>
+       <mi mathvariant="normal">π</mi>
+       <mi>z</mi>
+      </mrow>
+     </mrow>
+    </mfrac>
+   </mrow>
+  </mrow>
+  <annotation encoding="StarMath 5.0">%GAMMA ( 1-z ) %GAMMA( z ) = { %pi } over { sin {%pi z} }</annotation>
+ </semantics>
+</math>
