@@ -1,0 +1,323 @@
+% -*- TeX-engine: luatex -*-
+\documentclass[aspectratio=169]{beamer}
+\usepackage{luatexja}
+\usepackage{luatexja-ruby}
+\usepackage[hiragino-pro,deluxe]{luatexja-preset}
+\usepackage{verbatim}
+\usepackage[T1]{fontenc}
+\usepackage{alltt}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\hypersetup{unicode}
+\usepackage{fancyvrb}
+\usepackage{amsmath}
+\usepackage{ulem}
+\usepackage{listings}
+\usepackage{tikz}
+
+\usetheme{EastLansing}
+\renewcommand{\kanjifamilydefault}{\gtdefault}
+\setbeamerfont{title}{family=\gtfamily} % ゴシック
+\setbeamerfont{author}{family=\gtfamily} % ゴシック
+\setbeamerfont{frame}{family=\gtfamily} % ゴシック
+\setbeamerfont{frametitle}{family=\mgfamily} % 丸ゴシック
+\setbeamertemplate{blocks}[rounded]
+
+\newcommand\cmdname[1]{\texttt{\textbackslash #1}}
+
+\title{\LaTeX マクロ入門}
+\author{荒田 実樹}
+\date{2018年4月26日}
+
+\lstset{basicstyle=\ttfamily,columns=flexible,language=[LaTeX]TeX}
+
+\begin{document}
+\begin{frame}\frametitle{}
+  \titlepage
+\end{frame}
+\begin{frame}\frametitle{目次}
+  \tableofcontents
+\end{frame}
+\section{マクロとは}
+\begin{frame}[fragile] \frametitle{マクロとは}
+  \begin{itemize}
+  \item 命令列を別の命令列に置き換える
+  \item よく使う命令列に短い名前を与えることができる
+  \item 例えば、\cmdname{TeX}というマクロは \\
+    \lstinline!T\kern -.1667em\lower .5ex\hbox {E}\kern -.125emX\@!\\
+    として定義されている
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile] \frametitle{コマンドとマクロの関係}
+  \begin{itemize}
+  \item コマンド：\TeX 処理系や文書への\emph{命令}
+  \item マクロ：コマンドのうち、別の命令列に\emph{置き換わる}もの
+  \item \TeX\ primitive：コマンドのうち、\emph{\TeX 処理系が直接処理する}もの
+  \item \LaTeX や各種パッケージが提供するコマンドは全てマクロとして実装されている
+  \item 使う側としては、特定のコマンドがマクロか\TeX\ primitiveかは意識しなくて良い
+  \end{itemize}
+  \begin{exampleblock}{\TeX\ primitiveの例}
+    \cmdname{def}, \cmdname{par}, \cmdname{displaystyle}, \cmdname{jobname}, \cmdname{left}, \cmdname{right}, など
+  \end{exampleblock}
+  \begin{exampleblock}{マクロとして定義されたコマンドの例}
+    \cmdname{TeX}, \cmdname{frac}, \cmdname{begin}, \cmdname{item}, 他多数
+  \end{exampleblock}
+\end{frame}
+\begin{frame}[fragile]\frametitle{コマンド名について}
+  \begin{itemize}
+  \item 基本：バックスラッシュ\texttt{\textbackslash}の後にアルファベットを並べる
+    \begin{itemize}
+    \item このパターンでは数字や記号は使えない
+    \item \TeX 処理系が日本語対応の場合は、アルファベットの他に漢字や仮名も使える
+    \item 例：\cmdname{TeX}, \cmdname{section}, \cmdname{西暦}
+    \item このパターンの場合、直後の空白文字は無視される \\
+      例：``\lstinline!\TeX primitive!''は``\TeX primitive''となる
+      （cf. \lstinline!\TeX\ primitive!）
+    \end{itemize}
+  \item バックスラッシュの後に記号1文字
+    \begin{itemize}
+    \item 例：\lstinline+\!+, \lstinline+\,+
+    \item 直後の空白文字は無視されない
+    \end{itemize}
+  \item 特殊文字の一部：（標準では）半角チルダ\lstinline+~+
+    \begin{itemize}
+    \item 利用者的には「コマンド名」というよりも「特殊文字」というくくりの方が自然かもしれない
+    %\item 「カテゴリーコードの変更」という技を使えば、任意の記号をコマンド名扱いにできる
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile]\frametitle{マクロの使い方1}
+  \begin{itemize}
+  \item コマンド名の後に引数を書く
+  \item 必須の引数は波カッコ\lstinline!{ }!で囲む
+    \begin{itemize}
+    \item 波カッコ\lstinline!{ }!は入れ子にできる
+    \item 囲むために使った波カッコ自身は引数には含まれない
+    \end{itemize}
+  \item 必須の引数が1文字またはコマンド名1個の場合は\lstinline!{ }!を省略できる
+    \begin{itemize}
+    \item \lstinline!\frac12!は\lstinline!\frac{1}{2}!と等価
+    \item \lstinline!\newcommand\Real{\mathbf{R}}!\\
+      は\\
+      \lstinline!\newcommand{\Real}{\mathbf{R}}!\\
+      と等価
+    %\item 「1文字の場合は\lstinline!{ }!を省略できる」と書いたが、一部のコマンドはスターの有無で動作を変えるので、そういう場合は\lstinline!{}!を省略すると挙動が変わってしまう。開き角カッコ\lstinline![!についても同様。
+    \item 「省略できる」からといって省略するかどうかは、書く人の美意識次第だが…
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile]\frametitle{マクロの使い方2}
+  \begin{itemize}\item \ruby{省略可能}{オプショナル}な引数を与える場合は角カッコ\lstinline![ ]!で囲む
+    \begin{itemize}
+    \item 例：\lstinline!\sqrt[5]{\pi}!
+    \item 角カッコ\lstinline![ ]!は直接入れ子にはできないが、一旦波カッコで囲めば入れ子にできる
+    \end{itemize}
+  \item 一部のコマンドは、コマンド名の直後にスターを置くことによって挙動が変わる
+    \begin{itemize}
+    \item 例：\cmdname{section*}, \cmdname{newcommand*}, \cmdname{verb*}
+    \item 「スターもコマンド名の一部」のように見えるが、実際は違うので要注意
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\section{自分でマクロを定義しよう}
+\begin{frame}[fragile]\frametitle{マクロを定義するコマンド：\textbackslash newcommand}
+  \begin{itemize}
+  \item \lstinline!\newcommand{コマンド名}{内容}!
+  \end{itemize}
+  \begin{exampleblock}{例}
+    \begin{itemize}
+    \item \lstinline!\newcommand{\Real}{\mathbb{R}}!
+    \item \cmdname{Real}コマンドは\lstinline!\mathbb{R}!に置き換わる
+    \item マクロのメリット
+      \begin{itemize}
+      \item \TeX ソース中に「見た目」だけではない「意味」を記述できる
+      \item 見た目を変更したくなった時に、マクロの定義だけを変えれば良い \\
+        例：$\mathbb{R}$ではなく$\mathbf{R}$にしたくなったら、\cmdname{Real}の定義を\lstinline!\mathbf{R}!に変えるだけで済む
+      \end{itemize}
+    \item 注意点：複数人で作業する場合に各自が好き勝手にマクロを定義すると収拾がつかなくなる
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+\begin{frame}[fragile]\frametitle{引数を取るコマンドを定義する}
+  \begin{itemize}
+  \item \lstinline!\newcommand{コマンド名}[引数の個数]{内容}!
+  \item コマンド名と内容の間に、オプション引数として引数の個数を渡す
+  \item 「内容」の中に書いた\texttt{\#1}〜\texttt{\#9}が実際の引数に置き換えられる（引数の個数は最大で9個）
+  \end{itemize}
+  \begin{exampleblock}{例}
+    \begin{itemize}
+    \item \lstinline!\newcommand{\transpose}[1]{{}^t\,#1}!
+    \item \lstinline!\transpose{A}!が\lstinline!{}^t\,A!に置き換えられる
+    \item マクロのメリット：転置の記法を変えたくなった場合は、\cmdname{transpose}の定義を変えれば良い
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+\begin{frame}[fragile]\frametitle{引数を省略可能にする}
+  \begin{itemize}
+  \item \lstinline!\newcommand{コマンド名}[引数の個数][デフォルト値]{内容}!
+  \item デフォルト値を指定することで、最初の引数（\texttt{\#1}）が省略可能になる
+  \item 2番目以降の引数は省略可能にできない（\cmdname{newcommand}の弱点）
+  \end{itemize}
+  \begin{exampleblock}{例}
+    \begin{itemize}
+    \item \lstinline!\newcommand{\norm}[2][2]{\left\lVert #2\right\rVert_{#1}}!
+      \newcommand{\norm}[2][2]{\left\lVert #2\right\rVert_{#1}}
+    \item \lstinline!\norm{x}!が$\norm{x}$に、\lstinline!\norm[\infty]{x}!が$\norm[\infty]{x}$になる
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+\begin{frame}[fragile]\frametitle{（上級）長い引数と短い引数}
+  \begin{itemize}
+  \item 長い引数：引数の中に空行を含められる
+  \item 短い引数：引数の中に空行を含められない
+    \begin{itemize}
+    \item 目的：波カッコ \} の閉じ忘れのミスを発見しやすくする
+    \item \TeX 的には空行は\cmdname{par}コマンドと等価なので、短い引数の中に\cmdname{par}は書けない
+    \end{itemize}
+  \item \cmdname{newcommand}の直後にスター\texttt{*}を置くと、定義するマクロの引数が短い引数になる
+  \item \lstinline!\newcommand*{コマンド名}[引数の個数][デフォルト値]{内容}!
+  \end{itemize}
+  \begin{exampleblock}{例（閉じカッコ忘れ）}
+\begin{lstlisting}[frame=single]
+\section{このTA小話がすごい！2018
+
+2018年の大賞はこれだ！！！
+\end{lstlisting}
+というソースをコンパイルするとParagraph ended before ... was complete というエラーが出る
+  \end{exampleblock}
+\end{frame}
+\begin{frame}[fragile]\frametitle{マクロの上書き}
+  \begin{itemize}
+  \item \cmdname{renewcommand}を使うと、定義済みのコマンドを上書きできる
+  \item 使い方は\cmdname{newcommand}と同様： \\
+    \lstinline!\renewcommand{コマンド名}[引数の個数][デフォルト値]{内容}!
+  \end{itemize}
+  \begin{exampleblock}{例：\cmdname{Re}コマンドを上書きする}
+    \begin{itemize}
+    \item 標準では\cmdname{Re}は$\Re$
+    \item \lstinline!\renewcommand{\Re}{\operatorname{Re}}!とすると
+    \item \renewcommand{\Re}{\operatorname{Re}} $\Re$になる
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+\begin{frame}\frametitle{マクロのスコープについて}
+  \begin{itemize}
+  \item 定義したマクロはどの範囲で有効か？
+  \item スコープが区切られる条件：
+    \begin{itemize}
+    \item 単体の波カッコ \texttt{\{ \}} （マクロ引数としての \texttt{\{ \}} は該当しない）
+    \item 環境（\cmdname{begin\{\}} .. \cmdname{end\{\}}）
+    \end{itemize}
+  \item \cmdname{renewcommand}で上書きしても、スコープの外に出ると上書きした定義は忘れられる
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile]\frametitle{マクロのスコープについて}
+  \begin{exampleblock}{例}
+\begin{lstlisting}
+\begin{enumerate}
+  % \labelenumi コマンドの定義を上書きする
+  \renewcommand{\labelenumi}{(\theenumi)}
+  \item hoge
+  \item piyo
+\end{enumerate}
+
+% \labelenumi の定義は元に戻っている
+\begin{enumerate}
+  \item foo
+  \item bar
+\end{enumerate}
+\end{lstlisting}
+\end{exampleblock}
+\end{frame}
+\section{環境}
+\begin{frame}[fragile]\frametitle{環境とは}
+  \begin{itemize}
+  \item \cmdname{begin} .. \cmdname{end} で囲むやつ
+  \item 文書の構造を表現する手段の一つ
+  \item 環境は、\LaTeX 特有の概念である（plain \TeX には環境という概念はない）
+  \item 環境の名前はコマンド名と違い、アルファベットの他に、数字やアスタリスクを含めることができる
+  \item マクロと同様に、環境は引数を受け取れる。使う際は\texttt{\textbackslash begin\{環境名\}}の直後に引数を与える \\
+  \end{itemize}
+  \begin{exampleblock}{例：\texttt{array}環境}
+\begin{lstlisting}
+\begin{array}{cccc}
+  f\colon & A & \to & B \\
+          & x & \mapsto & y
+\end{array}
+\end{lstlisting}
+\texttt{\textbackslash begin\{array\}}直後の\texttt{\{cccc\}}が環境への引数
+\end{exampleblock}
+\end{frame}
+\begin{frame}[fragile]\frametitle{環境を定義する}
+  \begin{itemize}
+  \item 環境は\cmdname{newenvironment}コマンドで定義できる
+  \item 基本形：\lstinline!\newenvironment{名前}{開始}{終了}!
+  \item 引数を取る場合：\lstinline!\newenvironment{名前}[引数の個数][デフォルト値]{開始}{終了}!
+    \begin{itemize}
+    \item 引数の指定については\cmdname{newcommand}と同様
+    \item 「開始」の中にある\texttt{\#1}〜\texttt{\#9}が引数で置き換えられる
+    \item 「終了」の部分では引数は参照できない
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile]\frametitle{マクロと環境の関係}
+  \begin{itemize}
+  \item \lstinline!\begin{hoge}!〜\lstinline!\end{hoge}!\\
+    は大雑把には\\
+    \lstinline!{\hoge!〜\lstinline!\endhoge}!\\
+    と等価
+  \end{itemize}
+  \begin{block}{重要}
+    環境と同じ名前のコマンドを共存させることはできない
+  \end{block}
+\end{frame}
+\section{\cmdname{def} vs \cmdname{newcommand}}
+\begin{frame}[fragile]\frametitle{\cmdname{def} vs \cmdname{newcommand}}
+  \begin{itemize}
+    \item \LaTeX においてマクロを定義する方法として\cmdname{def}と\cmdname{newcommand}の2種類が使われているが、どう違うのか？
+    \item \lstinline!\def\Real{\mathbb{R}}!\\
+      か\\
+      \lstinline!\newcommand{\Real}{\mathbb{R}}!\\
+      か？
+  \end{itemize}
+\end{frame}
+\begin{frame}[fragile]\frametitle{使い方の違い}
+  \begin{itemize}
+  \item \cmdname{def}\emph{(コマンド名)} \emph{(引数の指定)}\texttt{\{}\emph{内容}\texttt{\}}
+  \item \cmdname{newcommand}\texttt{\{}\emph{コマンド名}\texttt{\}[}\emph{引数の個数}\texttt{][}\emph{デフォルト値}\texttt{]\{}\emph{内容}\texttt{\}}
+  \item \cmdname{def}はマクロではないので、コマンド名を\texttt{\{~\}}で括ることはできないし、内容を囲む\texttt{\{~\}}を省略できない
+  \item \cmdname{def}では省略可能な引数は簡単には定義できず、\TeX プログラミングが必要となる
+  \end{itemize}
+\end{frame}
+\begin{frame}\frametitle{挙動の違い}
+  \begin{itemize}
+  \item 既存の同名のコマンドまたは環境があっても、\cmdname{def}は問答無用で上書きする
+    \begin{itemize}
+    \item →意図せずに既存のコマンドや環境を壊す可能性がある。危険！
+    \item （常識的な範囲ではそのような「事故」はそうそう起こらないと思うが…）
+    \end{itemize}
+  \item \cmdname{newcommand}は既存のコマンド・環境があるとエラーになる
+    \begin{itemize}
+    \item →意図せずに既存のマクロや環境を壊すことがない。安全！
+    \item 上書きしたい場合は\cmdname{renewcommand}を使う
+    \end{itemize}
+  \item \cmdname{newcommand}では一部の名前を定義できない（endから始まる名前及びrelax）
+    \begin{itemize}
+    \item 安全のため
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+\begin{frame}\frametitle{\cmdname{newcommand}では物足りない！}
+  \begin{itemize}
+    \item 「ぼくのかんがえたさいきょうの数学記法を\LaTeX で実現するには\cmdname{newcommand}で定義できる形式では不足だ！」
+    \item \texttt{xparse}パッケージで提供される\cmdname{NewDocumentCommand}系のコマンドを使うと、「スターの有無で挙動を変える」「複数の省略可能引数を持つ」など、より柔軟なマクロを定義できる
+    \item 詳しくはググるか\texttt{texdoc xparse}
+  \end{itemize}
+\end{frame}
+\begin{frame}[plain]\frametitle{過去のスライド}
+  \centering
+  私（荒田）が過去の計算数学で話したTA小話の資料\\
+  \url{https://github.com/minoki/ks-slide}\\
+  「\TeX の字句解析」「浮動小数点数」など
+\end{frame}
+\end{document}
