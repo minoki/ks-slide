@@ -6,3 +6,4 @@
 - 「[浮動小数点数](https://github.com/minoki/ks-slide/blob/master/floating-point/floating-point.pdf)」（2017年6月22日）
 - 「[区間演算と精度保証](https://github.com/minoki/ks-slide/blob/master/interval-arithmetic/interval-arithmetic.pdf)」（2017年11月7日）
 - 「[LaTeXマクロ入門](https://github.com/minoki/ks-slide/blob/master/latex-macro/latex-macro.pdf)」（2018年4月26日）
+- 「[LaTeX処理自動化ツールClutTeXの紹介](https://github.com/minoki/ks-slide/blob/master/cluttex/cluttex.pdf)」（2018年10月11日）
